@@ -130,12 +130,16 @@
     ```
 
     -template
-      - 모호성: 다른 template 을 사용 vs 자신이 template 인지 
+      - 모호성: 다른 template 을 사용 vs 자신이 template 인지
+
     -resue
       - 모호성: 100번 실험 값 재사용 vs 100번 재사용 
+
     -copy
-      - 모호성: 100번 복사 vs 100번재 복사물
+      - 모호성: 100번 복사 vs 100번 째 복사물
+
     -inherit
+      - 적당한하다
     
     copy_experiment 나 inherit_from_experiment_id 가 좋은 선택으로 보임
 
