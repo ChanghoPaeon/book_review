@@ -171,7 +171,7 @@
   - 다른 중요한 속성 포함하기
     |상황|변수명|더 나은 변수명|
     |------|---|---|
-    |A password is in “plaintext” and should be encrypted before further processing|password|paintest_password|
+    |A password is in “plaintext” and should be encrypted before further processing|password|paintext_password|
     |A user-provided comment that needs escaping before being displayed|comment | unescaped_comment|
     |Bytes of html have been converted to UTF-8|html|html_utf8|
     |Incoming data has been “url encoded”| data|data_urlenc|
