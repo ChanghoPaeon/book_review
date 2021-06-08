@@ -1,4 +1,4 @@
-## Chapter 1. Code Should Be Eash to Understand
+## Chapter 1. Code Should Be Easy to Understand
 
 - key idea: Code should be easy to understand
 
