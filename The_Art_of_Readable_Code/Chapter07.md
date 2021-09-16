@@ -51,7 +51,7 @@
   }
   ```
 
-    ```cpp
+  ```cpp
   if (a != b) {
     // Case One ...
   } else {
