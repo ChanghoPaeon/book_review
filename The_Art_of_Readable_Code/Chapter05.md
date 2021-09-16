@@ -1,4 +1,4 @@
-## Chapter 4. Knowing What to Comment
+## Chapter 5. Knowing What to Comment
 
   - KEY IDEA: The purpose of commenting is to help the reader know as much as the writer did.
     - 설명하지 말아야 하는 것.
