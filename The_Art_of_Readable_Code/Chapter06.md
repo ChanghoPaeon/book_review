@@ -111,7 +111,7 @@
   ```cpp
   // Rearrange 'v' so that elements < pivot come before those >= pivot;
   // Then return the largest 'i' for which v[i] < pivot (or -1 if none are < pivot)
-  int Partition(vector<int>* v, int pivot
+  int Partition(vector<int>* v, int pivot);
   ```
 
   위 주석은 아주 명확하지만 시각적으로 혼란스럽다.
