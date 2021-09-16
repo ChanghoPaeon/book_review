@@ -1,9 +1,6 @@
 ## Chapter 6. Making Comments Precise and Compact
 
   - KEY IDEA: Comments should have a high information-to-space ratio..
-    - 설명하지 말아야 하는 것.
-    - 코딩을 수행하면서 머릿속에 있는 정보를 기록하지
-    - 코드를 읽는 사람의 입장에서 필요한 정보가 무엇인지 유추하기
     
 ### Keep Comments Compact
   
