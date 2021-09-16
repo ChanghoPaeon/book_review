@@ -243,219 +243,154 @@
 
 ### Minimize Nesting
 
+  코드 중첩이 깊다면 이해하기 힘들다. 각 레벨의 중첩마다 읽는 사람에게 추가 조건이라는 mental stack 을 push 한다.
+  닫는 괄호는 만나면 stack 을 pop 하고 기존 조건을 기억하기 힘들다.
+  
+  다음은 간단한 예제이다.
+  ```cpp
+    if (user_result == SUCCESS) {
+      if (permission_result != SUCCESS) {
+        reply.WriteErrors("error reading permissions");
+        reply.Done();
+        return;
+      }
+      reply.WriteErrors("");
+    } else {
+      reply.WriteErrors(user_result);
+    }
+
+    reply.Done();
+  ```
+
+  첫 번째 닫는 괄호를 보면 당신은 다음과 같이 생각할 것이다.
+  ' permission_result != SUCCESS 가 끝났구나!. 이제 permission_result == SUCCESS 이고 아직 user_result == SUCCESS 안이야!'
+
 #### How Nesting Accumulates
+  앞의 예를 수정하기 전에, 왜 저렇게 되었는지 이야기 해보자.
+
+  처음엔, 코드는 단순했었다.
+
+```cpp
+  if (user_result == SUCCESS) {
+    reply.WriteErrors("");
+  } else {
+    reply.WriteErrors(user_result);
+  }
+  reply.Done();
+```
+
+이 코드는 완벽히 이해 가능하다. 그러나 프로그래머가 두번째 operation을 추가했다.
+
+  ```cpp
+    if (user_result == SUCCESS) {
+      if (permission_result != SUCCESS) {
+        reply.WriteErrors("error reading permissions");
+        reply.Done();
+        return;
+      }
+      reply.WriteErrors("");
+    } else {
+      reply.WriteErrors(user_result);
+    }
+
+    reply.Done();
+  ```
+
+  이러한 코드는 일리가 있다 - 프로그래머는 넣어야할 새로운 코드 덩어리가 있고, 그것을 넣기 위한 쉬운 곳을 찾았을 뿐이다. 이 새로운 코드는 프로그래머 마음에 bolded 하다. 그리고 이 변화의 차이가 매우 clean 하다. 그래서 이것은 쉬운 change 로 보인다.
+
+  그러나 다은사람이 나중에 이 코드를 보면 모든 context 는 사라져 버린다.
+
+  - KEY IDEA: Look at your code from a fresh perspective when you’re making changes. Step back and look at it as a whole.
 
 #### Removing Nesting by Returning Early
 
+  이것 처럼 중첩된 코드는 실패케이스를 가능한한 빨리 리턴하여 제거할 수 있다.
+
+  ```cpp
+    if (user_result != SUCCESS) {
+      reply.WriteErrors(user_result);
+      reply.Done();
+      return;
+    }
+    if (permission_result != SUCCESS) {
+      reply.WriteErrors(permission_result);
+      reply.Done();
+      return;
+    }
+    
+    reply.WriteErrors("");
+    reply.Done();
+  ```  
+  
+  이 코드는 1 level 중첩만 가진다. 그러나 더 중요한 것은 읽는 사람의 mental stack 에서 pop 할일이 없다. - 모든 if block 은 return으로 끝난다.
+
+
 #### Removing Nesting Inside Loops
+
+  조기 리턴이 항상 적용가능하지 않다. 다음 loop안의 nested code 를 보자.
+
+```cpp
+  for (int i = 0; i < results.size(); i++) {
+    if (results[i] != NULL) {
+      non_null_count++;
+      if (results[i]->name != "") {
+        cout << "Considering candidate..." << endl;
+        ...
+      }
+    }
+  }
+```
+
+루프 안에서, 조기 리턴에 대응하는 기술은 continue 이다.
+
+```cpp
+  for (int i = 0; i < results.size(); i++) {
+    if (results[i] == NULL) continue;
+    non_null_count++;
+
+    if (results[i]->name == "") continue;
+    cout << "Considering candidate..." << endl;
+    
+    ...
+  }
+```
+
+pch comment: continue 내리는게 더 나은가? 한 줄이면 괄호 빼먹었다고 오해할수도 있으니 옆으로 쓰는 것이 나은가??
+
+if (...) return; 과 같은 방식으로  if (...) continue; 가 loop 안에서 동작한다.
+
+
+cotniue가 goto 처럼 bounce 하기 때문에 혼란스러운수 있다. 하지만 이 경우 loop의 각 iteration이 독립적이고, continue를 'skip over this item' 를 의미하는 것을 쉽게 알 수 있다.
 
 ### Can You Follow the Flow of Execution?
 
-### Summary
+  이 챕터는 low-level 제어 흐름에 관한 것이다.: loops, condtion 그리고 다른 jumps 를 어떻게 읽게 쉽게 만드는 지. 하지만 당신의 프로그램의 흐름을 high-level 에서 생각해봐야만 한다. 이는 프로그램의 전체 실행 경로를 쉽게 따라갈수있게 하기 위해서다 - main에서 시작하여 끝날때 까지 마음속으로 코드를 밟아 나가야 한다.
 
+  하지만 , 실제로, 프로그래밍 언어와 라이브러리는 코드가 'behinde the scenes' 에서 동작하도록 하여 흐름을 따르기 어렵게 만든다.
 
+  |Programming construct|How high-level program flow gets obscured|
+  |------|---|
+  |threading|It’s unclear what code is executed when.|
+  |signal/interrupt handlers|Certain code might be executed at any time.|
+  |exceptions|Execution can bubble up through multiple function calls.|
+  |function pointers & anonymous functions|It’s hard to know exactly what code is going to run because that isn’t known
+at compile time|
+  |virtual methods|object.virtualMethod() might invoke code of an unknown subclass|
 
-### Avoid Ambiguous Pronouns
+  이러한 구조 중 몇몇은 매우 유용하다. 코드를 좀더 가독성 있게 만들고 덜 중복되게 한다. 그러나 우리는 때때로  나중에 코드를 볼 사람이 얼마나 어렵게 읽을 지 모른채 과도하게 이런 구조를 사용한다. 또한 이런 구조는 버그 추적을 매우 어렵게 한다.
 
-“Who’s on First?” 처러 대명사는 상황을 매우 혼란스럽게 만든다.
+  key 는 이런 구조의 비율이 너무 크지 않아야 한다. 이런 특성을 과용하면 코드를 추적하는 일을 Three-Card Monte 게임처럼 만들어 버린다.
 
-  ```
-    // Insert the data into the cache, but check if it's too big first.
-  ```
-
-  위 문장에서 it 은 data 혹은 cache 를 의미할 수 있다. 결국 코드 나머지 부분을 읽어야 의미파악이 되는데 그러면 주석이 있는 이유가 무엇인가?
-
-  조금이라도 혼동의 여지가 있으면 **대명사를 원래 명사로 대체**
-
-  ```
-    // If the data is small enough, insert it into the cache.
-  ```
-
-  혹은 
-
-  ```
-    // Insert the data into the cache, but check if the data is too big first.
-  ```
-### Polish Sloppy Sentences
-  대개 주석을 명확히하는 작업은 간단히 하는 작업과 함께 이루어진다.
-
-  ```
-    # Depending on whether we've already crawled this URL before, give it a different priority.
-  ```
-
-  위 문장은 어느정도 괜찮지만 다음과 비교해보자
-
-  ```
-    # Give higher priority to URLs we've never crawled before.
-  ```
-
-  아래가 간단하고 짧고 직접적이다. 또한 방문하지 않은 url 에 높은 우선순위를 준다는 사실까지 설명.
-
-### Describe Function Behavior Precisely
-
-  ```
-    // Return the number of lines in this file.
-    int CountLines(string filename) { ... }
-  ```
-
-  line 을 정의하는 방법이 아래처럼 여러가지다.
-  - "" (an empty file)  : 0 or 1
-  - "hello" : 0 or 1
-  - "hello\n" : 1 or 2
-  - "hello\n world": 1 or 2
-  - "hello\n\r cruel\n world\r": 2 or 3 or 4
-
-  가장 단순한 구현은 \n 을 세는 것.( Unix 명령어 wc 와 이와 같이 작동)
-
-
-  ```
-    // Count how many newline bytes ('\n') are in the file.
-    int CountLines(string filename) { ... }
-  ```
-  주석이 이전에 비해 많이 길어지지 않았지만 더 많은 정보를 담고 있다.
-
-### Use Input/Output Examples That Illustrate Corner Cases
-  주석 작성 시 신중히 선택된 입출력 예제는 천마디 말보다 가치있다.
-
-  ```java
-  // Remove the suffix/prefix of 'chars' from the input 'src'.
-  String Strip(String src, String chars) { ... }
-  ```
-
-  위 예는 아래 두가지가 명확하지 않음
-  
-  - chars가 제거되야하는 정확한 부분 문자열을 의미하는가? 아니면 특정한 순서가 없는 문자의 집합을 의미하는가?
-  - src 끝에 chars 가 여러번 있으면 어떻게 되는가?
-
-  ```java
-  // Example: Strip("abba/a/ba", "ab") returns "/a/"
-  String Strip(String src, String chars) { ... }
-  ```
-
-  위 예는 Strip 기능 전체를 보여주지만, 아래의 간단한 예는 유용하지 않다.
-
-  ```java
-  // Example: Strip("ab", "a") returns "b"
-  ```
-
-  다음은 또 다른 예이다.
-
-  ```cpp
-  // Rearrange 'v' so that elements < pivot come before those >= pivot;
-  // Then return the largest 'i' for which v[i] < pivot (or -1 if none are < pivot)
-  int Partition(vector<int>* v, int pivot);
-  ```
-
-  위 주석은 아주 명확하지만 시각적으로 혼란스럽다.
-  다음이 오히려 낫다.
-
-  ```cpp
-  // Example: Partition([8 5 9 8 2], 8) might result in [5 2 | 8 9 8] and return 1
-  int Partition(vector<int>* v, int pivot);
-  ```
-
-  위에의 입출력에 관련해 몇 군데 짚고 넘어갈 부분이다.
-  - 벡터 안에 존재하는 값을 pivot으로 사용하여 경계가 분할되는 방식을 설명.
-  - 벡터가 중복된 값을 허용하는걸 보여주기 위해 중복된 값인 8을 포함
-  - 결과값을 담은 벡터를 일부러 정렬하지 않음. 만약 정렬하면 잘못된 idea를 get.
-  - 1이 return 되기 때문에, 혼동을 피하기 위해 1을 포함시키지 않음
-
-
-### State the Intent of Your Code
-  
-  주석 달기는 나중에 읽을 사람에게 코드를 잘성하면서 당신이 생각하던 것을 이야기 하는 것이다.
-  그러나 많은 주석이 코드의 동작을 설명하는데 그친다.
-
-  ```cpp
-  void DisplayProducts(list<Product> products) {
-    products.sort(CompareProductByPrice);
-    // Iterate through the list in reverse order
-    for (list<Product>::reverse_iterator it = products.rbegin(); it != products.rend(); ++it)
-      DisplayPrice(it->price);
-  }
-  ```
-
-  서술만 하는 위 주석 보다 아래가 낫다.
-
-  ```cpp
-    // Display each price, from highest to lowest
-    for (list<Product>::reverse_iterator it = products.rbegin(); ... )
-  ```
-
-  위 주석 자체적으로 틀린 것은 없지만 의도가 드러나지 않는다. 그러나 아래 주석은 작성자의 의도를 나타내며, 위에 sort 가 한번 되어 코드의 실제 동작이 그와 반대라는 사실을 더 잘 눈치채게 된다.
-
-
-
-### “Named Function Parameter” Comments
-
-  ```
-  Connect(10, false);
-  ```
-  불리언 값이 무엇을 뜻하는지 불분명.
-  
-  파이썬 같은 언어는 아래와 같이 가능
-
-  ```python
-  def Connect(timeout, use_encryption): 
-    ...
-  # Call the function using named parameters
-  Connect(timeout = 10, use_encryption = False)
-  ```
-
-  cpp 나 Java 에서는 아래처럼 가능
-
-  ```cpp
-  void Connect(int timeout, bool use_encryption) { ... }
-  // Call the function with commented parameters
-  Connect(/* timeout_ms = */ 10, /* use_encryption = */ false);
-  ```
-
-  불리언의 경우 주석을 앞에 놓아라 
-
-  ```cpp
-  // Don't do this!
-  Connect( ... , false /* use_encryption */);
-  // Don't do this either!
-  Connect( ... , false /* = use_encryption */);
-  ```
-
-  암호화를 하라는 건지 말라는 건지 분명하지 않다.
-
-
-### Use Information-Dense Words
-  프로그래밍을 몇년간 하다보면 같은 문제가 지속적으로 반복된다는 사실을 알 것이다. 그 같은 패턴이나 관용구를 묘사하기 위한 단어나 문구를 사용하자.
-
-  ```cpp
-  // This class contains a number of members that store the same information as in the
-  // database, but are stored here for speed. When this class is read from later, those
-  // members are checked first to see if they exist, and if so are returned; otherwise the
-  // database is read from and that data stored in those fields for next time.
-  ```
-
-  위와 같은 설명은 아래처럼 줄여 쓸수 있다.
-  ```cpp
-  // This class acts as a caching layer to the database.
-  ```
-
-  아래는 다른 예제이다.
-
-  
-  ```cpp
-  // Remove excess whitespace from the street address, and do lots of other cleanup
-  // like turn "Avenue" into "Ave." This way, if there are two different street addresses
-  // that are typed in slightly differently, they will have the same cleaned-up version and
-  // we can detect that these are equal
-  ```
-
-  위와 같은 설명은 아래처럼 줄여 쓸수 있다.
-  ```cpp
-  // Canonicalize the street address (remove extra spaces, "Avenue" -> "Ave.", etc.)
-  ```
 
 ### Summary
-  - 대명사가 여러 가지를 가리킬 수 있다면 사용하지 않는 것이 좋다
-  - 가능한 정확하게 함수 동작을 설명하라
-  - 신중하게 선택된 입출력으로 주석을 달아라
-  - 자명한 세부사항 보다 high-level 의도를 서술하라
-  - 불분명한 함수의 변수를 설명하기 위해 inline-comment 를 사용해라
-  - 많은(다양한 x) 의미를 담는 단어를 사용하여 주석을 간단히 유지하라.
+  코드 흐름을 읽기 쉽게 만드는 몇가지 방법이 있다.
+
+  비교 구문을 쓸때에는 변하는 값을 왼쪽에, 좀더 stable 한 값을 오른쪽에 놓아라
+
+  if/else block의 순서를 바꿀수 도 있다. 일반적으로 positive/easier/interesting case를 처음에 놓아라. 때때로 이런 criteria가 충돌이 일어나지만, 일반적으로 좋은 규칙이다.
+
+  삼항 연산자, do/while 그리고 goto 같은 특정 구조는 종종 가독성이 떨어지는 결과를 낳는다. 거의 항상 clear 한 대안이 있으므로 사용하지 않는 것이 좋다.
+
+  중첩된 코드는 따라가기 위해 더 많은 집중을 요구한다. 각 새로운 중첩은 mental stack에 push 될 좀 더 많은 context 를 만든다. 대신에, 이를 피하기 위해선형적인 코드를 추구하라.
+
+  조기 리턴은 중첩을 제거하고 코드를 clean up 한다.  Guard statements 은 매우 유용하다
